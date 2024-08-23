@@ -1,0 +1,25 @@
+{
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["@typescript-eslint", "prettier", "@cspell"],
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:prettier/recommended",
+    "plugin:@cspell/recommended"
+  ],
+  "rules": {
+    "dot-notation": 0,
+    "prettier/prettier": "error",
+    "@cspell/spellchecker": [
+      "error",
+      {
+        "customWordListFile": ".dictionaryrc",
+        "checkComments": false,
+        "ignoreImports": true
+      }
+    ],
+    "react-hooks/exhaustive-deps": "off",
+    "@typescript-eslint/no-non-null-assertion": "off",
+    "curly": [2, "multi-line"]
+  }
+}
