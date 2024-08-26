@@ -4,11 +4,23 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+
     "lint-staged": "lint-staged",
     "prepare": "husky install",
     "dev": "vite",
     "build": "vite build",
-    "serve": "vite preview"
+    "serve": "vite preview",
+    "format": "prettier --check",
+    "format:fix": "prettier --write",
+    "format:fix:all": "prettier --write './**/*.{js,jsx,ts,tsx,css,md,json}'",
+    "postinstall": "is-ci || husky install",
+    "prepack": "is-ci || pinst --disable",
+    "postpack": "is-ci || pinst --disable",
+    "lint": "eslint ./lib ./bin",
+    "lint:fix": "eslint --fix",
+    "commit": "git-cz",
+    "clear-jest": "jest --clearCache",
+    "clean-ts": "tsc --build --clean"
   },
   "dependencies": {
     "@digitalroute/cz-conventional-changelog-for-jira": "^8.0.1",
