@@ -1,2 +1,0 @@
-export const GET_USER_UNSDG = 'GET_USER_UNSDG';
-export const UPDATE_USER_UNSDG = 'UPDATE_USER_UNSDG';
