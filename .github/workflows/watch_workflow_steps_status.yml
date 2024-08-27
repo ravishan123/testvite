@@ -1,0 +1,167 @@
+name: Watch Workflow Steps Status
+
+on:
+  workflow_call:
+    inputs:
+      JOB_NAME:
+        required: true
+        type: string
+      NOTIFICATION_TITLE:
+        type: string
+      STEP_NAME:
+        required: true
+        type: string
+      TYPE:
+        required: true
+        type: string
+      CHANGELOG:
+        type: string
+        default: 'No changelog found for this release'
+      IR_LABEL:
+        type: string
+      BRANCH:
+        type: string
+      ENVIRONMENT:
+        required: true
+        type: string
+    outputs:
+      STATUS:
+        value: ${{ jobs.step_status.outputs.STATUS }}
+    secrets:
+      TOKEN:
+        required: true
+      SLACK_WEBHOOK_URL:
+        required: true
+
+jobs:
+  step_request_status:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.ENVIRONMENT }}
+    outputs:
+      STATUS: ${{ steps.get-step-status.outputs.STATUS }}
+    steps:
+      - name: Get running job status
+        id: get-step-status
+        run: |
+          sleep_duration=5
+          i=0
+          while true; do
+            response=$(curl -L \
+                        -H "Accept: application/vnd.github+json" \
+                        -H "Authorization: token ${{ secrets.TOKEN }}"\
+                        -H "X-GitHub-Api-Version: 2022-11-28" \
+                        "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs")
+    
+            jq -r ".jobs[] | select(.name==\"$job_name\").steps[] | select(.name==\"$step_name\")" <<< "$response"
+
+            job_status=$(echo "$response" | jq -r '.jobs[] | select(.name=="${{ inputs.JOB_NAME }}").steps[] | select(.name=="${{ inputs.STEP_NAME }}").status')
+
+            if [[ "$job_status" == "in_progress" || "$job_status" == "completed" ]]; then
+              echo "STATUS=requested" >> $GITHUB_OUTPUT
+              break
+            else
+              echo "Job ${{ inputs.JOB_NAME}} and step ${{ inputs.STEP_NAME }} is not yet queued or in progress, sleeping for $sleep_duration seconds"
+              sleep $sleep_duration
+              i=$((i+1))
+              if (( i % 5 == 0 )); then
+                sleep_duration=$((sleep_duration+3))
+              fi
+            fi
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
+
+  send_test_request_notification:
+    name: Send Unit Test Request Notification
+    needs: [step_request_status]
+    uses: ./.github/workflows/send_test_notifications.yml
+    if: ${{ inputs.TYPE == 'TESTS' }}
+    with:
+      REQUESTED: ${{ needs.step_request_status.outputs.STATUS == 'requested' }}
+      TITLE: ${{ inputs.NOTIFICATION_TITLE }}
+      BRANCH: ${{ inputs.BRANCH }}
+      ENVIRONMENT: ${{ inputs.ENVIRONMENT }}
+    secrets:
+      inherit
+
+  send_deployment_request_notification:
+    name: Send Deployment Request Notification
+    needs: [step_request_status]
+    uses: ./.github/workflows/send_release_notifications.yml
+    if: ${{ inputs.TYPE == 'DEPLOYMENT' }}
+    with:
+      REQUESTED: ${{ needs.step_request_status.outputs.STATUS == 'requested' }}
+      IR_LABEL: ${{ inputs.IR_LABEL }}
+      ENVIRONMENT: ${{ inputs.ENVIRONMENT }}
+      CHANGELOG: ${{ inputs.CHANGELOG }}
+      BRANCH: ${{ inputs.BRANCH }}
+    secrets:
+      inherit
+
+  step_status:
+    runs-on: ubuntu-latest
+    needs: step_request_status
+    if: needs.step_request_status.result == 'success'
+    environment: ${{ inputs.ENVIRONMENT }}
+    outputs:
+      STATUS: ${{ steps.get-step-status.outputs.STATUS }}
+    steps:
+      - name: Get running job status
+        id: get-step-status
+        run: |
+          sleep_duration=5
+          i=0
+          while true; do
+            response=$(curl -L \
+                        -H "Accept: application/vnd.github+json" \
+                        -H "Authorization: token ${{ secrets.TOKEN }}"\
+                        -H "X-GitHub-Api-Version: 2022-11-28" \
+                        "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs")
+    
+            jq -r ".jobs[] | select(.name==\"$job_name\").steps[] | select(.name==\"$step_name\")" <<< "$response"
+            
+            job_status=$(echo "$response" | jq -r '.jobs[] | select(.name=="${{ inputs.JOB_NAME }}").steps[] | select(.name=="${{ inputs.STEP_NAME }}").conclusion')
+
+            if [[ "$job_status" == "success" || "$job_status" == "failure" || "$job_status" == "skipped" || "$job_status" == "cancelled" ]]; then
+              echo "STATUS=$job_status" >> $GITHUB_OUTPUT
+              break
+            else
+              echo "Job ${{ inputs.JOB_NAME}} and step ${{ inputs.STEP_NAME }} is in progress, sleeping for $sleep_duration seconds"
+              sleep $sleep_duration
+              i=$((i+1))
+              if (( i % 5 == 0 )); then
+                sleep_duration=$((sleep_duration+3))
+              fi
+            fi
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
+
+  send_test_status_notification:
+    name: Send Unit Test Status Notification
+    needs: [step_status]
+    uses: ./.github/workflows/send_test_notifications.yml
+    if: ${{ inputs.TYPE == 'TESTS' }}
+    with:
+      SUCCESS: ${{ needs.step_status.outputs.STATUS == 'success' }}
+      FAIL: ${{ needs.step_status.outputs.STATUS == 'failure' || needs.step_status.outputs.STATUS == 'skipped' || needs.step_status.outputs.STATUS == 'cancelled' }}
+      TITLE: ${{ inputs.NOTIFICATION_TITLE }}
+      BRANCH: ${{ inputs.BRANCH }}
+      ENVIRONMENT: ${{ inputs.ENVIRONMENT }}
+    secrets:
+      inherit
+
+  send_deployment_status_notification:
+    name: Send Deployment Status Notification
+    needs: [step_status]
+    uses: ./.github/workflows/send_release_notifications.yml
+    if: ${{ inputs.TYPE == 'DEPLOYMENT' }}
+    with:
+      SUCCESS: ${{ needs.step_status.outputs.STATUS == 'success' }}
+      FAIL: ${{ needs.step_status.outputs.STATUS == 'failure' || needs.step_status.outputs.STATUS == 'skipped' || needs.step_status.outputs.STATUS == 'cancelled' }}
+      IR_LABEL: ${{ inputs.IR_LABEL }}
+      BRANCH: ${{ inputs.BRANCH }}
+      CHANGELOG: ${{ inputs.CHANGELOG }}
+      ENVIRONMENT: ${{ inputs.ENVIRONMENT }}
+    secrets:
+      inherit

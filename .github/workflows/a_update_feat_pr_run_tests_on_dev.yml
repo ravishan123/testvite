@@ -1,0 +1,107 @@
+name: Update PR & Run Tests on Dev
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [dev]
+
+jobs:
+  apply_pr_template:
+    name: Apply PR Template
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: PR has Content?
+        id: hasContent
+        run: |
+          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          pr_body=$(cat <<$EOF
+          ${{ github.event.pull_request.body }}
+          $EOF
+          )
+          if [[ -z "$pr_body" || "$pr_body" == *"Diplo by Smashtaps DevOps"* ]]; then
+            echo "HAS_CONTENT=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "HAS_CONTENT=true" >> "$GITHUB_OUTPUT"
+          fi
+          
+      - name: Extract Jira ID and PR Type
+        id: extractInfo
+        run: |
+          branch_name=$(echo "${{ github.head_ref }}")
+          jira_id=$(echo "$branch_name" | grep -oE '[A-Z]+-[0-9]+' | head -n 1) || true
+          pr_type=$(echo "$branch_name" | awk -F'/' '{print $1}')
+
+          echo "JIRA_ID=$jira_id" >> $GITHUB_ENV
+          echo "PR_TYPE=$pr_type" >> $GITHUB_ENV
+          
+      - name: Fetch Jira Issue Title
+        id: fetch_jira_title
+        run: |
+          jira_api_url="$JIRA_URL/rest/agile/1.0/issue/$JIRA_ID?fields=summary"
+          jira_title=$(curl -H "Authorization: Basic $JIRA_API_TOKEN" $jira_api_url | jq -r '.fields.summary')
+          echo $jira_title
+          echo "JIRA_TITLE=$jira_title" >> "$GITHUB_ENV"
+          
+      - name: IF Fix Set Content
+        id: fixContent
+        if: ${{ (startsWith(github.head_ref, 'fix/') || startsWith(github.head_ref, 'hotfix/')) && steps.hasContent.outputs.HAS_CONTENT == 'false'}}
+        run: |
+          gh pr edit $PR_ID --body-file .github/pr_templates/bugfix.md
+          echo "HAS_CONTENT=true" >> $GITHUB_OUTPUT
+
+      - name: If Feature or Other Type Set Content
+        if:  ${{ startsWith(github.head_ref, 'feat/') && steps.hasContent.outputs.HAS_CONTENT == 'false' && steps.fixContent.outputs.HAS_CONTENT != 'true' }}
+        run: |
+          gh pr edit $PR_ID --body-file .github/pr_templates/feature.md
+          
+      - name: Set PR Title
+        run: |
+          gh pr edit $PR_ID --title "$PR_TYPE: [$JIRA_ID] - $JIRA_TITLE"
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PR_ID: ${{ github.event.pull_request.number }}
+      JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+      JIRA_URL: ${{ secrets.JIRA_URL }}
+
+  run_tests_on_branch:
+    name: Run Tests on Branch
+    needs: [apply_pr_template]
+    uses: ./.github/workflows/setup_project.yml
+    with:
+      BRANCH: ${{ github.head_ref }}
+      RUN_UNIT_TESTS: true
+      RUN_E2E_DEV_TESTS: true
+      ENVIRONMENT: DEV
+    secrets: inherit   
+
+  watch_for_unit_tests_status:
+    name: Watch For Unit Tests Status
+    needs: [apply_pr_template]
+    uses: ./.github/workflows/watch_workflow_steps_status.yml
+    with:
+      JOB_NAME: Run Tests on Branch / Setup Project
+      STEP_NAME: Run Unit Tests
+      TYPE: TESTS
+      BRANCH: ${{ github.event.pull_request.base.ref }}
+      ENVIRONMENT: DEV
+    secrets:
+      TOKEN: ${{ secrets.DIPLO_BOT_TOKEN }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  watch_for_e2e_tests_status:
+    name: Watch For E2e Tests Status
+    needs: [apply_pr_template]
+    uses: ./.github/workflows/watch_workflow_steps_status.yml
+    with:
+      JOB_NAME: Run Tests on Branch / Setup Project
+      STEP_NAME: Run E2E Tests for Dev
+      NOTIFICATION_TITLE: Regression
+      TYPE: TESTS
+      BRANCH: ${{ github.event.pull_request.base.ref }}
+      ENVIRONMENT: DEV
+    secrets:
+      TOKEN: ${{ secrets.DIPLO_BOT_TOKEN }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

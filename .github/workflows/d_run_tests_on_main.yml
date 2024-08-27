@@ -1,0 +1,45 @@
+name: Run Tests on Main
+
+on:
+  pull_request:
+    types: [opened]
+    branches: [main]
+
+jobs:
+  run_tests_on_main:
+    name: Run Tests on Main
+    uses: ./.github/workflows/setup_project.yml
+    with:
+      branch: ${{ github.head_ref }}
+      RUN_UNIT_TESTS: true
+      RUN_E2E_DEV_TESTS: true
+      ENVIRONMENT: MAIN
+    secrets:
+      DIPLO_BOT_TOKEN: ${{ secrets.DIPLO_BOT_TOKEN }}
+
+  watch_for_unit_tests_status:
+    name: Watch For Unit Tests Status
+    uses: ./.github/workflows/watch_workflow_steps_status.yml
+    with:
+      JOB_NAME: Run Tests on Main / Setup Project
+      STEP_NAME: Run Unit Tests
+      TYPE: TESTS
+      BRANCH: ${{ github.event.pull_request.base.ref }}
+      ENVIRONMENT: MAIN
+    secrets:
+      TOKEN: ${{ secrets.DIPLO_BOT_TOKEN }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  watch_for_e2e_tests_status:
+    name: Watch For E2e Tests Status
+    uses: ./.github/workflows/watch_workflow_steps_status.yml
+    with:
+      JOB_NAME: Run Tests on Main / Setup Project
+      STEP_NAME: Run E2E Tests for Dev
+      NOTIFICATION_TITLE: Regression
+      TYPE: TESTS
+      BRANCH: ${{ github.event.pull_request.base.ref }}
+      ENVIRONMENT: MAIN
+    secrets:
+      TOKEN: ${{ secrets.DIPLO_BOT_TOKEN }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

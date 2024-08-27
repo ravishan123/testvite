@@ -1,0 +1,30 @@
+name: Release New Version
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release_version:
+    name: Release Version
+    uses: ./.github/workflows/setup_project.yml
+    if: ${{ !contains(github.event.head_commit.message, '[release-commit]') }}
+    with:
+      BRANCH: ${{ github.base_ref }}
+      RELEASE_VERSION: true
+      ENVIRONMENT: MAIN
+    secrets: inherit
+
+  get_version_content:
+    name: Send Version Notification
+    uses: ./.github/workflows/send_slack_notifications.yml
+    if: ${{ !contains(github.event.head_commit.message, '[release-commit]') }}
+    needs: release_version
+    with:
+      CHANGELOG: ${{ needs.release_version.outputs.VERSION_CONTENT }}
+      ENVIRONMENT: MAIN
+      TYPE: VERSION
+    secrets: inherit
+
+  

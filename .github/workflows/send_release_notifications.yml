@@ -1,0 +1,86 @@
+name: Send Release Notification
+
+on:
+  workflow_call:
+    inputs:
+      REQUESTED:
+        default: false
+        type: boolean
+      SUCCESS:
+        default: false
+        type: boolean
+      FAIL:
+        default: false
+        type: boolean
+      RELEASE_VERSION:
+        type: string
+      BRANCH:
+        default: ${{ github.event.pull_request.base.ref }}
+        type: string
+      IR_LABEL:
+        type: string
+        default: '-'
+      CHANGELOG:
+        type: string
+        default: 'No changelog found for this release'
+      ENVIRONMENT:
+        type: string
+        
+    secrets:
+      SLACK_WEBHOOK_URL:
+        required: true
+
+jobs:        
+  slack_requested_notification:
+    name: Send Job Requested Slack Notification
+    uses: ./.github/workflows/send_slack_notifications.yml
+    if: ${{ inputs.REQUESTED }}
+    with:
+      TYPE: RELEASE
+      JOB_STATUS: Requested
+      GITHUB_USER: ${{ github.actor }}
+      GITHUB_REPOSITORY: ${{ github.repository }}
+      GITHUB_BRANCH: ${{ inputs.BRANCH }}
+      JOB_NO: ${{ github.run_number }}
+      VERSION: ${{ inputs.RELEASE_VERSION }}
+      CHANGELOG: ${{ inputs.CHANGELOG }}
+      IR: ${{ inputs.IR_LABEL }}
+      ENVIRONMENT: ${{ inputs.ENVIRONMENT }}
+    secrets:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  slack_success_notification:
+    name: Send Job Success Slack Notification
+    if: ${{ inputs.SUCCESS }}
+    uses: ./.github/workflows/send_slack_notifications.yml
+    with:
+      TYPE: RELEASE
+      JOB_STATUS: Success
+      GITHUB_USER: ${{ github.actor }}
+      GITHUB_REPOSITORY: ${{ github.repository }}
+      GITHUB_BRANCH: ${{ inputs.BRANCH }}
+      JOB_NO: ${{ github.run_number }}
+      VERSION: ${{ inputs.RELEASE_VERSION }}
+      CHANGELOG: ${{ inputs.CHANGELOG }}
+      IR: ${{ inputs.IR_LABEL }}
+      ENVIRONMENT: ${{ inputs.ENVIRONMENT }}
+    secrets:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      
+  slack_failure_notification:
+    name: Send Job Failure Slack Notification
+    if: ${{ inputs.FAIL }}
+    uses: ./.github/workflows/send_slack_notifications.yml
+    with:
+      TYPE: RELEASE
+      JOB_STATUS: Failure
+      GITHUB_USER: ${{ github.actor }}
+      GITHUB_REPOSITORY: ${{ github.repository }}
+      GITHUB_BRANCH: ${{ inputs.BRANCH }}
+      JOB_NO: ${{ github.run_number }}
+      VERSION: ${{ inputs.RELEASE_VERSION }}
+      CHANGELOG: ${{ inputs.CHANGELOG }}
+      IR: ${{ inputs.IR_LABEL }}
+      ENVIRONMENT: ${{ inputs.ENVIRONMENT }}
+    secrets:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

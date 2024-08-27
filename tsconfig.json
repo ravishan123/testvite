@@ -1,7 +1,42 @@
 {
-  "files": [],
-  "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
-  ]
+  "compilerOptions": {
+    "allowJs": true,
+    "target": "ESNext",
+    "useDefineForClassFields": true,
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "paths": {
+      "testUtils": ["tests/testUtils.ts"],
+      "@constants/*": ["./src/utils/constants/*"],
+      "@api/*": ["./src/api/*"],
+      "@utils/*": ["./src/utils/*"],
+      "@applicationAtoms/*": ["./src/store/appState/*"],
+      "@serverAtoms/*": ["./src/store/serverState/*"],
+      "@ui/*": ["./src/components/ui/*"],
+      "@globals/*": ["./src/components/globals/*"],
+      "@layouts/*": ["./src/components/layouts/*"],
+      "@pages/*": ["./src/components/pages/*"],
+      "@store/*": ["./src/store/*"],
+      "@assets/*": ["./src/assets/*"]
+    },
+    "baseUrl": "./",
+    "types": ["vitest/globals", "testing-library__jest-dom"],
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src", "@testing-library/jest-dom"],
+  "references": [{ "path": "./tsconfig.node.json" }]
 }

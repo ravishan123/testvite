@@ -1,0 +1,137 @@
+name: Run Tests on Next
+
+concurrency:
+  group: NEXT
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    branches:
+      - next
+    types:
+      - opened
+      - labeled
+      - synchronize
+
+jobs:
+  has_release_label:
+    name: Has IR Label
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'RELEASE TO PROD') }}
+    outputs:
+      IR_LABEL: ${{ steps.hasLabel.outcome.IR_LABEL }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Has IR Label
+      id: hasLabel
+      run: |
+        PR_TITLE="${{ github.event.pull_request.title }}"
+        LABEL_FOUND=false
+        LABELS_JSON='${{ toJSON(github.event.pull_request.labels.*.name) }}'
+
+        # convert JSON array to bash array
+        LABELS_ARR=($(echo "$LABELS_JSON" | jq -r '.[]'))
+        IR_LABEL=''
+
+        for label in "${LABELS_ARR[@]}"; do
+          if [[ $label == IR-* ]]; then
+            LABEL_FOUND=true
+            PR_TITLE=${PR_TITLE/'[IR-]'/$label}
+            IR_LABEL=$label
+          fi
+        done
+
+        if [[ $LABEL_FOUND == 'false' ]]; then
+          exit 1
+        else
+          echo "IR_LABEL=$IR_LABEL" >> GITHUB_OUTPUT
+          gh pr edit ${{ github.event.pull_request.number }} --title "$PR_TITLE"
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.DIPLO_BOT_TOKEN }}
+
+  run_e2e_testsand_deploy_next:
+    name: Run Release on Next
+    uses: ./.github/workflows/setup_project.yml
+    needs: has_release_label
+    with:
+      BRANCH: ${{ github.event.pull_request.head.ref }}
+      RUN_UNIT_TESTS: true
+      RUN_E2E_NEXT_TESTS: true
+      DEPLOY: true
+      ENVIRONMENT: NEXT
+    secrets: inherit
+
+  watch_for_unit_tests_status:
+    name: Watch For Unit Tests Status
+    uses: ./.github/workflows/watch_workflow_steps_status.yml
+    needs: has_release_label
+    with:
+      JOB_NAME: Run Release on Next / Setup Project
+      STEP_NAME: Run Unit Tests
+      TYPE: TESTS
+      BRANCH: ${{ github.event.pull_request.head.ref }}
+      ENVIRONMENT: NEXT
+    secrets:
+      TOKEN: ${{ secrets.DIPLO_BOT_TOKEN }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  watch_for_e2e_tests_status:
+    name: Watch For E2e Tests Status
+    uses: ./.github/workflows/watch_workflow_steps_status.yml
+    needs: has_release_label
+    with:
+      JOB_NAME: Run Release on Next / Setup Project
+      STEP_NAME: Run E2E Tests for Next
+      NOTIFICATION_TITLE: Regression
+      TYPE: TESTS
+      BRANCH: ${{ github.event.pull_request.head.ref }}
+      ENVIRONMENT: NEXT
+    secrets:
+      TOKEN: ${{ secrets.DIPLO_BOT_TOKEN }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  watch_for_deploy_status:
+    name: Watch For Deployment Status
+    uses: ./.github/workflows/watch_workflow_steps_status.yml
+    needs: has_release_label
+    with:
+      JOB_NAME: Run Release on Next / Setup Project
+      STEP_NAME: Deploy
+      TYPE: DEPLOYMENT
+      IR_LABEL: ${{ needs.has_release_label.outputs.IR_LABEL }}
+      BRANCH: ${{ github.event.pull_request.head.ref }}
+      CHANGELOG: ${{ github.event.pull_request.body }}
+      ENVIRONMENT: NEXT
+    secrets:
+      TOKEN: ${{ secrets.DIPLO_BOT_TOKEN }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  rollback:
+    name: Run Rollback on Next
+    needs: [watch_for_e2e_tests_status, watch_for_deploy_status]
+    if: ${{ needs.watch_for_e2e_tests_status.outputs.STATUS == 'failure' || needs.watch_for_deploy_status.outputs.STATUS == 'failure' }}
+    uses: ./.github/workflows/setup_project.yml
+    with:
+      BRANCH: ${{ github.event.pull_request.base.ref }}
+      DEPLOY: true
+      ENVIRONMENT: NEXT
+    secrets: inherit
+
+  watch_for_rollback_status:
+    name: Watch For Rollback Status
+    needs: [watch_for_e2e_tests_status, watch_for_deploy_status]
+    uses: ./.github/workflows/watch_workflow_steps_status.yml
+    if: ${{ needs.watch_for_e2e_tests_status.outputs.STATUS == 'failure' || needs.watch_for_deploy_status.outputs.STATUS == 'failure' }}
+    with:
+      JOB_NAME: Run Rollback on Next / Setup Project
+      STEP_NAME: Deploy to Next Env
+      TYPE: DEPLOYMENT
+      BRANCH: ${{ github.event.pull_request.head.ref }}
+      CHANGELOG: 🔴 Found errors in tests or deployment hence rolling back to previous version
+      ENVIRONMENT: NEXT
+    secrets:
+      TOKEN: ${{ secrets.DIPLO_BOT_TOKEN }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

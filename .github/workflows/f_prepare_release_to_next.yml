@@ -1,0 +1,94 @@
+name: Prepare Release to Next
+
+on:
+  release:
+    types: [released]
+
+jobs:
+  create_release_pr:
+    name: Create Release PR
+    runs-on: ubuntu-latest
+    environment: NEXT
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.DIPLO_BOT_TOKEN }}
+
+      - name: Create Release Branch
+        id: releaseBranch
+        run: |
+          TAG_NAME=${{ github.event.release.tag_name }}
+          BRANCH_NAME="release/$TAG_NAME"
+          git fetch --depth=1 origin +refs/tags/$TAG_NAME:refs/tags/$TAG_NAME
+          git checkout tags/$TAG_NAME
+          git checkout -b $BRANCH_NAME
+          git push origin $BRANCH_NAME
+          echo "RELEASE_BRANCH=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          display_name=$(npm pkg get displayName)
+          if [[ "$display_name" == "{}" ]] || [[ -z "$display_name" ]]; then
+            display_name=$(npm pkg get name)
+          fi
+          echo "DISPLAY_NAME=$(echo "${display_name//\"}" | tr '[:lower:]' '[:upper:]')" >> $GITHUB_OUTPUT
+          echo "VERSION=$(npm pkg get version)" >> $GITHUB_OUTPUT
+
+      - name: Get Latest Tag from Next Branch
+        id: fromBranchTag
+        run: |
+          git fetch --tags
+          git checkout next
+          from_tag=$(git describe --tags --abbrev=0 $(git rev-parse --verify refs/remotes/origin/next))
+          echo "FROM_TAG=$from_tag" >> $GITHUB_OUTPUT
+
+      - name: Build Changelog
+        id: changelog
+        uses: mikepenz/release-changelog-builder-action@v3
+        with:
+          configurationJson: |
+            {
+              "template": "Hey Peeps!\n\nWe have deployed **${{ steps.releaseBranch.outputs.DISPLAY_NAME }}** to the **Next/QA** environment successfully! 🎉\n\nBelow mentioned tickets were deployed.\n\n#{{CHANGELOG}}\n\nThank you to everyone who contributed to making this deployment a success.\n\nThank you, \n DevOps, \n SmashTaps",
+              "categories": [
+                {
+                    "title": "## 🚀 Features",
+                    "labels": ["feat"]
+                },
+                {
+                    "title": "## 🐛 Fixes",
+                    "labels": ["fix", "hotfix"]
+                },
+                {
+                    "title": "## 🛠️ Chores",
+                    "labels": ["chores"]
+                },
+                {
+                    "title": "## 📁 Other",
+                    "labels": []
+                }
+              ],
+              "label_extractor": [
+                {
+                  "pattern": ".*(feat|fix|chore|hotfix):.*",
+                  "on_property": "title",
+                  "target": "$1"
+                }
+              ],
+              "transformers": [
+                {
+                  "pattern": "^(.+): \\[(.+)\\] - (.+)\n(.+?[\\-\\*] )(.+)$",
+                  "target": "- $2: $3 ($5)"
+                }
+              ]
+            }
+          fromTag: ${{ steps.fromBranchTag.outputs.FROM_TAG }}
+          toTag: ${{ github.event.release.tag_name }}
+          token: ${{ secrets.DIPLO_BOT_TOKEN }}
+    
+      - name: Create PR
+        run: |
+          PR_URL=$(gh pr create --title "📢 Release:GUD-${{ steps.releaseBranch.outputs.DISPLAY_NAME }}-NEXT-[IR-][${{ github.event.release.tag_name }}]" --body "${{ steps.changelog.outputs.changelog }}" --base next --reviewer roshanind,perera11,saga95,yasithg,gayanMadurapperuma --repo ${{ github.repository }} --head ${{ steps.releaseBranch.outputs.RELEASE_BRANCH }} | awk '/https:\/\/github.com/{print $0}')
+          echo "Created PR: $PR_URL"
+        env:
+          GITHUB_TOKEN: ${{ secrets.DIPLO_BOT_TOKEN }}
+
+
+      

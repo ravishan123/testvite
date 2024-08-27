@@ -1,13 +1,51 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/src/assets/images/gudpplLogo.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React + TS</title>
+    <title>gudppl - volunteer management platform for students and employees to grow the good you do</title>
+    <meta
+      name="description"
+      content="Easily verify volunteer hours for scholarship, university, and job applications, employee performance reviews, and CSR reporting."
+    />
+    <meta
+      name="keywords"
+      content="good people, gudppl, volunteer impact, community service, student volunteers, employee volunteers, volunteer hours, volunteer tracking, non profit volunteer"
+    />
+    <script>
+      // Check if the current domain is gudppl.com
+      if (window.location.hostname === 'gudppl.com') {
+        window.location.href = 'https://app.gudppl.com';
+      }
+    </script>
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@100;300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Add following styles to overcome the password visibility issue in Microsft Edge -->
+    <!-- This is known issue related to MUI -->
+    <style>
+      input::-ms-reveal,
+      input::-ms-clear {
+        display: none;
+      }
+    </style>
   </head>
+
   <body>
     <div id="root"></div>
+    <!-- Paste the following code snippet from the Amplify UI docs
+    to overcome the "global is not defined" error:
+    https://ui.docs.amplify.aws/react/getting-started/troubleshooting#uncaught-referenceerror-global-is-not-defined-1 -->
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      window.global = window;
+      window.process = {
+        env: { DEBUG: undefined },
+      };
+      var exports = {};
+    </script>
   </body>
 </html>

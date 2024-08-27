@@ -1,0 +1,216 @@
+name: Setup Project
+
+on:
+  workflow_call:
+    inputs:
+      BRANCH:
+        type: string
+        required: true
+      ENVIRONMENT:
+        type: string
+        required: true
+      RELEASE_VERSION:
+        default: false
+        type: boolean
+      RUN_UNIT_TESTS:
+        default: false
+        type: boolean
+      RUN_E2E_NEXT_TESTS:
+        default: false
+        type: boolean
+      RUN_E2E_DEV_TESTS:
+        default: false
+        type: boolean
+      DEPLOY:
+        default: false
+        type: boolean
+    outputs:
+      VERSION_CONTENT:
+        value: ${{ jobs.setup_project.outputs.VERSION_CONTENT }}
+    secrets:
+      DIPLO_BOT_TOKEN:
+        required: false
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  BUCKET_NAME : ${{ secrets.ROLE_TO_ASSUME }}
+  AWS_REGION : ${{ secrets.REGION }}        
+
+jobs:
+  setup_project:
+    name: Setup Project
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.ENVIRONMENT }}
+    outputs:
+      VERSION_CONTENT: ${{ steps.semantic_release.outputs.CONTENT }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.BRANCH }}
+          token: ${{ secrets.DIPLO_BOT_TOKEN }}
+
+      - name: Setup Node.js Testing work flow
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.11.0'
+          scope: "@smashtaps"
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Prepare Corepack
+        run: corepack prepare pnpm@8.14.0 --activate
+
+      - name: Configure npm registry
+        run: pnpm config set registry https://registry.npmjs.org/
+
+      # - uses: pnpm/action-setup@v2.2.4
+      #   name: Install pnpm
+      #   id: pnpm-install
+      #   with:
+      #     version: 8
+      #     run_install: false
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - uses: actions/cache@v3
+        name: Setup pnpm cache
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      # - name: Setup Node
+      #   uses: actions/setup-node@v2
+      #   with:
+      #     node-version: "18.x"
+      #     cache: 'pnpm'
+      #     registry-url: "https://npm.pkg.github.com"
+      #     scope: "@smashtaps"
+
+      - name: Cache Cypress binary
+        uses: actions/cache@v2
+        if: ${{ inputs.RUN_E2E_DEV_TESTS == true || inputs.RUN_E2E_NEXT_TESTS == true }}
+        with:
+          path: ~/.cache/Cypress
+          key: cypress-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            cypress-${{ runner.os }}-
+
+      - name: Install Dependencies
+        run: pnpm i --no-frozen-lockfile
+        env:
+          CI: true
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify Cypress binary
+        if: ${{ inputs.RUN_E2E_DEV_TESTS == true || inputs.RUN_E2E_NEXT_TESTS == true }}
+        run: npx cypress verify || npx cypress install
+
+      - name: Creating Release
+        id: semantic_release
+        if: ${{ inputs.RELEASE_VERSION == true }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.DIPLO_BOT_TOKEN }}
+          GIT_AUTHOR_NAME: diplo-bot
+          GIT_AUTHOR_EMAIL: roshan@smashtaps.com
+          GIT_COMMITTER_NAME: diplo-bot
+          GIT_COMMITTER_EMAIL: roshan@smashtaps.com
+        run: |
+          pnpm semantic-release
+          git fetch --tags
+          latest_tag=$(git describe --tags `git rev-list --tags --max-count=1`)
+          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          echo "CONTENT<<$EOF" >> $GITHUB_OUTPUT
+          echo "$(git show --quiet --format=%b $latest_tag)" >> $GITHUB_OUTPUT
+          echo "$EOF" >> $GITHUB_OUTPUT
+          echo "$(git show --quiet --format=%b $latest_tag)"
+
+      - name: Run Unit Tests
+        id: unitTestsStep
+        if: ${{ inputs.RUN_UNIT_TESTS == true }}
+        run: pnpm test
+
+      # START: DEV E2E and Deployment ========================
+      - name: Run E2E Tests for Dev
+        id: devE2ETestsStep
+        if: ${{ inputs.RUN_E2E_DEV_TESTS == true }}
+        run: |
+          pnpm run build:dev
+        # uses: cypress-io/github-action@v5
+        # with:
+        #   install: false
+        #   build: pnpm build:dev
+        #   start: pnpm start
+        # env:
+        #   VITE_API_PUBLIC_URL: ${{ secrets.VITE_API_PUBLIC_URL }}
+        #   VITE_API_DEV_URL: ${{ secrets.VITE_API_DEV_URL }}
+        #   VITE_API_USE_DOMAIN: ${{ secrets.VITE_API_USE_DOMAIN }}
+        #   VITE_USER_NODE_ENV: ${{ secrets.VITE_USER_NODE_ENV }}
+      # END: DEV E2E and Deployment ========================
+      
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        if: ${{ inputs.DEPLOY == true }}
+        with:
+          role-to-assume: ${{ secrets.ROLE_TO_ASSUME }}
+          role-session-name: gud-ppl-web-session
+          aws-region: ${{ secrets.REGION }}
+
+      - name: Deploy
+        id: DEPLOY
+        if: ${{ inputs.DEPLOY == true }}
+        run: |
+          if [[ "${{ inputs.ENVIRONMENT }}" == "PROD" ]]; then
+            pnpm run build:prod
+          elif [[ "${{ inputs.ENVIRONMENT }}" == "NEXT" ]]; then
+            pnpm run build:next
+          elif [[ "${{ inputs.ENVIRONMENT }}" == "DEV" ]]; then
+            pnpm run build:dev
+          fi
+
+          aws s3 cp ./dist s3://${{ secrets.S3_BUCKET_NAME }}/ --recursive
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.WEB_DISTRIBUTION_ID }} --paths "/*"
+        env:
+          NODE_ENV: ${{ secrets.NODE_ENV }}
+          VITE_USER_NODE_ENV: ${{ secrets.VITE_USER_NODE_ENV }}
+          VITE_USERPOOL_ID: ${{ secrets.VITE_USERPOOL_ID }}
+          VITE_USERPOOL_WEB_CLIENT_ID: ${{ secrets.VITE_USERPOOL_WEB_CLIENT_ID }}
+          VITE_DOMAIN_PREFIX: ${{ secrets.VITE_DOMAIN_PREFIX }}
+          VITE_REGION: ${{ secrets.VITE_REGION }}
+          VITE_API_PUBLIC_URL: ${{ secrets.VITE_API_PUBLIC_URL }}
+          VITE_API_DEV_URL: ${{ secrets.VITE_API_DEV_URL }}
+          VITE_API_USE_DOMAIN: ${{ secrets.VITE_API_USE_DOMAIN }}
+          VITE_IDENTITY_POOL_ID: ${{ secrets.VITE_IDENTITY_POOL_ID }}
+          VITE_PROFILE_BUCKET_ARN: ${{ secrets.VITE_PROFILE_BUCKET_ARN }}
+          VITE_ORGANIZATION_RESOURCE_BUCKET: ${{ secrets.VITE_ORGANIZATION_RESOURCE_BUCKET }}
+          VITE_USER_PROFILE_RESOURCE_BUCKET: ${{ secrets.VITE_USER_PROFILE_RESOURCE_BUCKET }}
+          VITE_GOOGLE_API_KEY: ${{ secrets.VITE_GOOGLE_API_KEY }}
+          VITE_API_USER_PROFILE_ID: ${{ secrets.VITE_API_USER_PROFILE_ID }}
+          VITE_API_FORGOT_PASSWORD_ID: ${{ secrets.VITE_API_FORGOT_PASSWORD_ID }}
+          VITE_API_SETTINGS: ${{ secrets.VITE_API_SETTINGS }}
+          VITE_API_ORGANIZATION: ${{ secrets.VITE_API_ORGANIZATION }}
+          VITE_API_VOLUNTEER: ${{ secrets.VITE_API_VOLUNTEER }}
+          VITE_S3_URL: ${{ secrets.VITE_S3_URL }}
+
+      # START: NEXT E2E and Deployment ========================
+      - name: Run E2E Tests for Next
+        id: e2eTestsOnNext
+        if: ${{ inputs.RUN_E2E_NEXT_TESTS == true }}
+        run: |
+          echo E2E Tests Are Running...
+        env:
+          VITE_API_PUBLIC_URL: ${{ secrets.VITE_API_PUBLIC_URL }}
+          VITE_API_DEV_URL: ${{ secrets.VITE_API_DEV_URL }}
+          VITE_API_USE_DOMAIN: ${{ secrets.VITE_API_USE_DOMAIN }}
+          VITE_USER_NODE_ENV: ${{ secrets.VITE_USER_NODE_ENV }}
+      # END: NEXT E2E and Deployment ========================

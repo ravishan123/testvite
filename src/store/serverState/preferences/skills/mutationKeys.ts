@@ -1,0 +1,4 @@
+export const SEARCH_SKILLS = 'SEARCH_SKILLS';
+export const POST_SKILLS = 'POST_SKILLS';
+export const GET_USER_SKILLS = 'GET_USER_SKILLS';
+export const PATCH_SKILLS = 'PATCH_SKILLS';

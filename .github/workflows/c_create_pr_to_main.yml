@@ -1,0 +1,26 @@
+name: Create PR to Main
+on:
+  pull_request:
+    branches: [dev]
+    types:
+      - labeled
+
+jobs:
+  create_pr:
+    name: Creating PR to Main
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.labels.*.name, 'TESTS PASSED') && !contains(github.event.pull_request.labels.*.name, 'released on @main') && !contains(github.event.pull_request.labels.*.name, 'released') && github.event.pull_request.state == 'closed' && github.event.pull_request.base.ref == 'dev'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Create PR
+        env:
+          GITHUB_TOKEN: ${{ secrets.DIPLO_BOT_TOKEN }}
+        run: |
+          gh pr create \
+            --base main \
+            --head ${{ github.event.pull_request.head.ref }} \
+            --title "${{ github.event.pull_request.title }}" \
+            --body "${{ github.event.pull_request.body }}" \
+            --reviewer ${{ github.event.pull_request.requested_reviewers }}
