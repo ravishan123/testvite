@@ -47,8 +47,8 @@ devDependencies:
     specifier: ^15.9.0
     version: 15.9.0
   husky:
-    specifier: ^9.1.5
-    version: 9.1.5
+    specifier: ^8.0.0
+    version: 8.0.3
   lint-staged:
     specifier: ^15.2.9
     version: 15.2.9
@@ -1902,9 +1902,9 @@ packages:
     engines: {node: '>=16.17.0'}
     dev: true
 
-  /husky@9.1.5:
-    resolution: {integrity: sha512-rowAVRUBfI0b4+niA4SJMhfQwc107VLkBUgEYYAOQAbqDCnra1nYh83hF/MDmhYs9t9n1E3DuKOrs2LYNC+0Ag==}
-    engines: {node: '>=18'}
+  /husky@8.0.3:
+    resolution: {integrity: sha512-+dQSyqPh4x1hlO1swXBiNb2HzTDN1I2IGLQx1GrBuiqFJfoMrnZWwVmatvSiO+Iz8fBUnf+lekwNo4c2LlXItg==}
+    engines: {node: '>=14'}
     hasBin: true
     dev: true
 
