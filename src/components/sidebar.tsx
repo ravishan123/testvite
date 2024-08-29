@@ -14,7 +14,6 @@ interface SidebarProps extends React.HTMLAttributes<HTMLElement> {
 export default function Sidebar({
   className,
   isCollapsed,
-  setIsCollapsed,
 }: SidebarProps) {
   const [navOpened, setNavOpened] = useState(false);
 
@@ -103,19 +102,6 @@ export default function Sidebar({
           isCollapsed={isCollapsed}
           links={sidelinks}
         />
-
-        {/* Scrollbar width toggle button */}
-        <Button
-          onClick={() => setIsCollapsed((prev) => !prev)}
-          size="icon"
-          variant="outline"
-          className="absolute -right-5 top-1/2 z-50 hidden rounded-full md:inline-flex"
-        >
-          <IconChevronsLeft
-            stroke={1.5}
-            className={`h-5 w-5 ${isCollapsed ? "rotate-180" : ""}`}
-          />
-        </Button>
       </Layout>
     </aside>
   );

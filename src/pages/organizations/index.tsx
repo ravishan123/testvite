@@ -14,9 +14,7 @@ export default function Tasks() {
             <h2 className="text-2xl font-bold tracking-tight">
               Manage Organizations
             </h2>
-            <p className="text-muted-foreground">
-              Here&apos;s a list of your tasks for this month!
-            </p>
+            <p className="text-muted-foreground">Showing 65 organizations</p>
           </div>
         </div>
         <div className="ml-auto flex items-center space-x-4">
