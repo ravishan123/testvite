@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { IconChevronsLeft, IconMenu2, IconX } from "@tabler/icons-react";
+import { IconMenu2, IconX } from "@tabler/icons-react";
 import { Layout } from "./custom/layout";
 import { Button } from "./custom/button";
 import Nav from "./nav";
@@ -11,10 +11,7 @@ interface SidebarProps extends React.HTMLAttributes<HTMLElement> {
   setIsCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-export default function Sidebar({
-  className,
-  isCollapsed,
-}: SidebarProps) {
+export default function Sidebar({ className, isCollapsed }: SidebarProps) {
   const [navOpened, setNavOpened] = useState(false);
 
   /* Make body not scrollable when navBar is opened */
@@ -71,7 +68,7 @@ export default function Sidebar({
                 />
               </svg>
             </div>
-           
+
             <div
               className={`flex flex-col justify-end truncate ${isCollapsed ? "invisible w-0" : "visible w-auto"}`}
             >
