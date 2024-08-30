@@ -6,7 +6,7 @@ export default function Tasks() {
     <Layout>
       {/* ===== Top Heading ===== */}
       <Layout.Header sticky>
-        <div className="mb-2 mt-4 flex items-center justify-between space-y-2">
+        <div className="mb-2 mt-9 flex items-center justify-between space-y-2">
           <div>
             <h2 className="text-2xl font-bold tracking-tight">
               Manage Organizations
