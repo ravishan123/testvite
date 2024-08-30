@@ -46,6 +46,66 @@ const data: DataItem[] = [
     email: "bob@example.com",
     joinedDate: "2023-03-25",
   },
+  {
+    id: "4",
+    email: "alice@example.com",
+    joinedDate: "2023-04-10",
+  },
+  {
+    id: "5",
+    email: "charlie@example.com",
+    joinedDate: "2023-05-05",
+  },
+  {
+    id: "6",
+    email: "david@example.com",
+    joinedDate: "2023-06-15",
+  },
+  {
+    id: "7",
+    email: "eve@example.com",
+    joinedDate: "2023-07-20",
+  },
+  {
+    id: "8",
+    email: "frank@example.com",
+    joinedDate: "2023-08-30",
+  },
+  {
+    id: "9",
+    email: "grace@example.com",
+    joinedDate: "2023-09-12",
+  },
+  {
+    id: "10",
+    email: "hank@example.com",
+    joinedDate: "2023-10-01",
+  },
+  {
+    id: "11",
+    email: "irene@example.com",
+    joinedDate: "2023-11-15",
+  },
+  {
+    id: "12",
+    email: "jack@example.com",
+    joinedDate: "2023-12-05",
+  },
+  {
+    id: "13",
+    email: "karen@example.com",
+    joinedDate: "2024-01-10",
+  },
+  {
+    id: "14",
+    email: "leo@example.com",
+    joinedDate: "2024-02-18",
+  },
+  {
+    id: "15",
+    email: "mia@example.com",
+    joinedDate: "2024-03-25",
+  },
 ];
 
 export default function UnverifiedTable() {

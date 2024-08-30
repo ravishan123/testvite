@@ -1,9 +1,6 @@
 import { Layout } from "@/components/custom/layout";
 import { UserNav } from "@/components/user-nav";
-import { DataTable } from "./components/data-table";
-import { columns } from "./components/columns";
-import { tasks } from "./data/tasks";
-
+import OrganizationsTable from "./components/organizations";
 export default function Tasks() {
   return (
     <Layout>
@@ -24,7 +21,7 @@ export default function Tasks() {
 
       <Layout.Body>
         <div className="-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-x-12 lg:space-y-0">
-          <DataTable data={tasks} columns={columns} />
+          <OrganizationsTable />
         </div>
       </Layout.Body>
     </Layout>
