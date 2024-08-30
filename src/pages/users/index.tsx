@@ -1,6 +1,8 @@
 import { Layout } from "@/components/custom/layout";
 import { UserNav } from "@/components/user-nav";
 import UsersVerified from "./components/users-verified";
+import UnverifiedTable from "./components/users-unerified";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Tasks() {
   return (
@@ -19,7 +21,20 @@ export default function Tasks() {
 
       <Layout.Body>
         <div className="-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-x-12 lg:space-y-0">
-          <UsersVerified />
+          <Tabs defaultValue="verified">
+            <TabsList className="grid grid-cols-2 w-1/3">
+              <TabsTrigger value="verified">Verified Users</TabsTrigger>
+              <TabsTrigger value="unverified">Unverified Users</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="verified">
+              <UsersVerified />
+            </TabsContent>
+
+            <TabsContent value="unverified">
+              <UnverifiedTable />
+            </TabsContent>
+          </Tabs>
         </div>
       </Layout.Body>
     </Layout>
