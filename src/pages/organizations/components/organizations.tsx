@@ -1,5 +1,4 @@
 import React from "react";
-import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -8,6 +7,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Button } from "@/components/custom/button";
+import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import {
   AlertDialog,
@@ -150,14 +151,12 @@ const data: DataItem[] = [
   },
 ];
 
-
-export default function OrganizationsTable() {
+export default function DashboardTable() {
   const [tableData, setTableData] = React.useState(data);
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     [],
   );
-  const [globalFilter, setGlobalFilter] = React.useState("");
   const [confirmationOpen, setConfirmationOpen] = React.useState(false);
   const [itemToToggle, setItemToToggle] = React.useState<DataItem | null>(null);
 
@@ -172,7 +171,11 @@ export default function OrganizationsTable() {
     },
     {
       accessorKey: "createdOn",
-      header: "Created On",
+      header: "Created on",
+    },
+    {
+      accessorKey: "createdOn",
+      header: "Created on ",
     },
     {
       id: "actions",
@@ -193,9 +196,7 @@ export default function OrganizationsTable() {
   ];
 
   const table = useReactTable({
-    data: tableData.filter((item) =>
-      item.name.toLowerCase().includes(globalFilter.toLowerCase()),
-    ),
+    data: tableData,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -206,7 +207,6 @@ export default function OrganizationsTable() {
     state: {
       sorting,
       columnFilters,
-      globalFilter,
     },
   });
 
@@ -225,18 +225,16 @@ export default function OrganizationsTable() {
 
   return (
     <div className="w-full">
-      {/* Search Input */}
       <div className="flex items-center py-4">
         <Input
-          placeholder="Filter organizations..."
-          value={(table.getColumn("email")?.getFilterValue() as string) ?? ""}
+          placeholder="Filter names..."
+          value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
           onChange={(event) =>
-            table.getColumn("email")?.setFilterValue(event.target.value)
+            table.getColumn("name")?.setFilterValue(event.target.value)
           }
           className="max-w-sm"
         />
       </div>
-      {/* Table */}
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -287,13 +285,51 @@ export default function OrganizationsTable() {
           </TableBody>
         </Table>
       </div>
+      <div className="flex items-center justify-between space-x-2 py-4">
+        <div className="flex-1 text-sm text-muted-foreground">
+          Page {table.getState().pagination.pageIndex + 1} of{" "}
+          {table.getPageCount()}
+        </div>
+        <div className="space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+          >
+            Previous
+          </Button>
+          {Array.from({ length: table.getPageCount() }, (_, i) => (
+            <Button
+              key={i}
+              variant={
+                table.getState().pagination.pageIndex === i
+                  ? "default"
+                  : "outline"
+              }
+              size="sm"
+              onClick={() => table.setPageIndex(i)}
+            >
+              {i + 1}
+            </Button>
+          ))}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
       <AlertDialog open={confirmationOpen} onOpenChange={setConfirmationOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action will change the status of the organization. Do you
-              want to proceed?
+              This action will change the status of the user. Do you want to
+              proceed?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
