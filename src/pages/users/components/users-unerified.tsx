@@ -9,17 +9,6 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/custom/button";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 
 import {
   ColumnDef,
@@ -36,38 +25,26 @@ import {
 // Define the type for your data
 type DataItem = {
   id: string;
-  name: string;
   email: string;
-  phone: string;
   joinedDate: string;
-  isActive: boolean;
 };
 
 // Sample data
 const data: DataItem[] = [
   {
     id: "1",
-    name: "John Doe",
     email: "john@example.com",
-    phone: "123-456-7890",
     joinedDate: "2023-01-15",
-    isActive: true,
   },
   {
     id: "2",
-    name: "Jane Smith",
     email: "jane@example.com",
-    phone: "234-567-8901",
     joinedDate: "2023-02-20",
-    isActive: false,
   },
   {
     id: "3",
-    name: "Bob Johnson",
     email: "bob@example.com",
-    phone: "345-678-9012",
     joinedDate: "2023-03-25",
-    isActive: true,
   },
 ];
 
@@ -77,41 +54,15 @@ export default function UnverifiedTable() {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     [],
   );
-  const [confirmationOpen, setConfirmationOpen] = React.useState(false);
-  const [itemToToggle, setItemToToggle] = React.useState<DataItem | null>(null);
 
   const columns: ColumnDef<DataItem>[] = [
-    {
-      accessorKey: "name",
-      header: "Name",
-    },
     {
       accessorKey: "email",
       header: "Email",
     },
     {
-      accessorKey: "phone",
-      header: "Phone",
-    },
-    {
       accessorKey: "joinedDate",
       header: "Joined Date",
-    },
-    {
-      id: "actions",
-      header: "Status",
-      cell: ({ row }) => {
-        const item = row.original;
-        return (
-          <Switch
-            checked={item.isActive}
-            onCheckedChange={() => {
-              setItemToToggle(item);
-              setConfirmationOpen(true);
-            }}
-          />
-        );
-      },
     },
   ];
 
@@ -130,27 +81,14 @@ export default function UnverifiedTable() {
     },
   });
 
-  const handleConfirmToggle = () => {
-    if (itemToToggle) {
-      const updatedData = tableData.map((dataItem) =>
-        dataItem.id === itemToToggle.id
-          ? { ...dataItem, isActive: !dataItem.isActive }
-          : dataItem,
-      );
-      setTableData(updatedData);
-    }
-    setConfirmationOpen(false);
-    setItemToToggle(null);
-  };
-
   return (
     <div className="w-full">
       <div className="flex items-center py-4">
         <Input
-          placeholder="Filter names..."
-          value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
+          placeholder="Filter emails..."
+          value={(table.getColumn("email")?.getFilterValue() as string) ?? ""}
           onChange={(event) =>
-            table.getColumn("name")?.setFilterValue(event.target.value)
+            table.getColumn("email")?.setFilterValue(event.target.value)
           }
           className="max-w-sm"
         />
@@ -243,23 +181,6 @@ export default function UnverifiedTable() {
           </Button>
         </div>
       </div>
-      <AlertDialog open={confirmationOpen} onOpenChange={setConfirmationOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action will change the status of the user. Do you want to
-              proceed?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmToggle}>
-              Continue
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
