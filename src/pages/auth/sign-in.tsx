@@ -9,8 +9,11 @@ export default function Login() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log();
+    
     if (isSignedIn) {
-      navigate("/");
+      navigate('/');
+
     }
   }, [isSignedIn, navigate]);
 
